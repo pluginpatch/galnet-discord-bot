@@ -8,11 +8,17 @@ Discord bot to post Galnet News from Elite: Dangerous. This bot will check Galne
 1. [Invite the Bot to your Server](https://discord.com/api/oauth2/authorize?client_id=937466947975651378&permissions=150528&scope=bot)
 2. Give the bot the necessary permissions to post
 3. Edit the channel you want the bot to sync to
+
 ![Editing channel](/how-to/edit_channel.jpg?raw=true)
+
 4. Add `galnet-news on` to the channel's topic
+
 ![Editing channel topic](/how-to/update_topic.jpg?raw=true)
+
 5. Save the change
+
 ![Saving changes](/how-to/save_changes.jpg?raw=true)
+
 6. You can remove the command from the channel's topic now
 
 Done!
