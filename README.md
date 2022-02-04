@@ -23,6 +23,10 @@ Discord bot to post Galnet News from Elite: Dangerous. This bot will check Galne
 
 Done!
 
+### Why are you using the commands in the channel topic?
+
+Since this bot has very limited interaction, it seemed like a waste to monitor all messages in the discord server.
+
 ## Stop Receiving Posts
 
 1. Edit the channel
