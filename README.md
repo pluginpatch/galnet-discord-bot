@@ -1,5 +1,5 @@
 # Galnet Discord Bot
-Discord bot to post Galnet News from Elite: Dangerous. This bot will check Galnet twice an hour for a new article and post to any subscribed Discord servers.
+Discord bot to post Galnet News from Elite: Dangerous. This bot will check Galnet four times an hour for a new article and post to any subscribed Discord servers.
 
 ![Example Image of Bot](/how-to/example_image.jpg?raw=true)
 
