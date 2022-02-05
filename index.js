@@ -33,7 +33,7 @@ let get_news = new cron.CronJob("4,19,34,49 * * * *", async () => {
     });
     response.on("end", () => {
       var article = JSON.parse(data);
-      console.log("Latest Sync: " + latest_sync);
+      console.log(Date.now() + " Latest Sync: " + latest_sync);
       // Did we get any data
       if(article.data && article.data[0]) {
         // Is the data more recent than the last sync
@@ -51,7 +51,7 @@ let get_news = new cron.CronJob("4,19,34,49 * * * *", async () => {
         latest_sync = Date.now()
       } else {
         // we received no data, skip this time
-        console.log("Received no data, skipping this run.")
+        console.log(Date.now() + " Received no data, skipping this run.")
       }
     });
   }).on("error", (err) => {
@@ -61,39 +61,39 @@ let get_news = new cron.CronJob("4,19,34,49 * * * *", async () => {
 
 // Post to servers
 function post(content) {
-  console.log("Updating all servers with new article.")
+  console.log(Date.now() + " Updating all servers with new article.")
   console.log("New article to post: " + content);
   var servers = db.prepare("SELECT * FROM servers;").all();
   servers.forEach((server) => {
     let channel = client.channels.cache.get(server.channel_id);
     // If Channel exists, post
     if(channel) {
-      channel.send(content);
-      console.log("Posting to channel: " + server.channel_id)
+      channel.send(content).catch(console.error);
+      console.log(Date.now() + " Posting to channel: " + server.channel_id)
     }
     else {
-      console.log("Failed getting channel: " + server.channel_id);
+      console.log(Date.now() + " Failed getting channel: " + server.channel_id);
     }
   });
 };
 
 // Commands via channelUpdate
-client.on("channelUpdate", function(old_channel, new_channel) {
+client.on("channelUpdate", async function(old_channel, new_channel) {
   if(new_channel.topic && new_channel.topic.includes("galnet-news on")) {
-    client.channels.cache.get(new_channel.id).send("Galnet News articles will be synced to this channel.\nUpdate the channel topic with `galnet-news off` (or kick the bot) to stop.\nYou can delete this message and remove the channel topic now, if desired.");
-    console.log("Adding guild to servers list: " + new_channel.guild.id);
+    client.channels.cache.get(new_channel.id).send("Galnet News articles will be synced to this channel.\nUpdate the channel topic with `galnet-news off` (or kick the bot) to stop.\nYou can delete this message and remove the channel topic now, if desired.").catch(console.error);
+    console.log(Date.now() + " Adding guild to servers list: " + new_channel.guild.id);
     db.prepare("INSERT OR REPLACE INTO servers (guild_id, channel_id, language) VALUES (?, ?, 'en-GB');").run(new_channel.guild.id, new_channel.id);
   }
   if(new_channel.topic && new_channel.topic.includes("galnet-news off")) {
-    client.channels.cache.get(new_channel.id).send("Galnet News article sync stopped for this channel.\nUpdate the channel topic with `galnet-news on` to resume article sync.\nYou can delete this message and remove the channel topic now, if desired.");
-    console.log("Removing guild from servers list: " + new_channel.guild.id);
+    client.channels.cache.get(new_channel.id).send("Galnet News article sync stopped for this channel.\nUpdate the channel topic with `galnet-news on` to resume article sync.\nYou can delete this message and remove the channel topic now, if desired.").catch(console.error);
+    console.log(Date.now() + " Removing guild from servers list: " + new_channel.guild.id);
     db.prepare("DELETE FROM servers WHERE guild_id = ?;").run(new_channel.guild.id);
   }
 });
 
 // Remove guild and channel when the bot is removed from the guild.
 client.on("guildDelete", function(guild){
-  console.log("Removing guild from servers list: " + guild.id);
+  console.log(Date.now() + " Removing guild from servers list because kicked: " + guild.id);
   db.prepare("DELETE FROM servers WHERE guild_id = ?;").run(guild.id);
 });
 
