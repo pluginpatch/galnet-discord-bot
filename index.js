@@ -37,7 +37,7 @@ client.on("ready", () => {
 });
 
 // Check for a new article every 4th, 19th, 34th, and 49th minute
-let get_news = new cron.CronJob("* * * * *", async () => {
+let get_news = new cron.CronJob("19,34 * * * *", async () => {
   let start_date_time = Date.now()
   https.get("https://cms.zaonce.net/en-GB/jsonapi/node/galnet_article?&sort=-published_at&page[offset]=0&page[limit]=1", (response) => {
     let data = "";
@@ -51,7 +51,7 @@ let get_news = new cron.CronJob("* * * * *", async () => {
       // Did we get any data
       if(article.data && article.data[0]) {
         // Is the data more recent than the last sync
-        if(Date.parse(article.data[0].attributes.published_at) <= latest_sync) {
+        if(Date.parse(article.data[0].attributes.published_at) >= latest_sync) {
           console.log("[" + toDateTime(start_date_time) + "] New article found! Published at: " + toDateTime(Date.parse(article.data[0].attributes.published_at)))
           var title = "__**" + article.data[0].attributes.title + "**__\n";
           var date = "_" + article.data[0].attributes.field_galnet_date + "_\n";
