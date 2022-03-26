@@ -12,6 +12,7 @@ Discord bot to post Galnet News from Elite: Dangerous. This bot will check Galne
 ![Editing channel](/how-to/edit_channel.jpg?raw=true)
 
 4. Add `galnet-news on` to the channel's topic
+  * Include the language code to sync with a different language. Example: `galnet-news on fr-FR`
 
 ![Editing channel topic](/how-to/update_topic.jpg?raw=true)
 
@@ -22,6 +23,23 @@ Discord bot to post Galnet News from Elite: Dangerous. This bot will check Galne
 6. You should see a notification from the bot letting you know that it is synced to the channel. If you don't see this message, it likely can't post to your channel, please check your permissions again. You can remove the command from the channel's topic and delete the message from the bot now.
 
 Done!
+
+### Language Preference
+Language preference is here. The Galnet News API doesn't support a lot of languages, but this should cover some popular languages.
+
+Add the language code to the channel's topic like: `galnet-news on de-DE`
+
+Available language codes:
+* English (Default): `en-GB`
+* German: `de-DE`
+* French: `fr-FR`
+* Spanish: `es-ES`
+* Portuguese: `pt-BR`
+* Italian: `it-IT`
+* Dutch: `nl-NL`
+* Russian: `ru-RU`
+
+I've noticed that some of these still show up as English, but that is how Frontier provides it.
 
 ### Why are you using the commands in the channel topic?
 
