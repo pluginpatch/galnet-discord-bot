@@ -36,8 +36,8 @@ client.on("ready", () => {
   get_news.start();
 });
 
-// Check for a new article every 4th and 34th minute
-let get_news = new cron.CronJob("4,34 * * * *", async () => {
+// Check for a new article every 7th and 37th minute
+let get_news = new cron.CronJob("7,37 * * * *", async () => {
   let start_date_time = Date.now();
   const new_article = await check_new_article();
   if(new_article) {
@@ -74,7 +74,7 @@ function get_latest_article(language) {
         if(article.data && article.data[0]) {
           var title = "__**" + article.data[0].attributes.title + "**__\n";
           var date = "_" + article.data[0].attributes.field_galnet_date + "_\n";
-          var link = "https://community.elitedangerous.com/galnet/uid/" + article.data[0].attributes.field_galnet_guid + "\n";
+          var link = `https://community.elitedangerous.com/${article.data[0].attributes.langcode}/galnet/uid/` + article.data[0].attributes.field_galnet_guid + "\n";
           var body = ">>> " + article.data[0].attributes.body.value;
           body = body.replace(/(\*|_|`|~|\\)/g, '\\$1');
           var message = title.concat(date, link, body);
