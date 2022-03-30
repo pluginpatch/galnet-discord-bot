@@ -12,8 +12,8 @@ const cron = require("cron");
 const Database = require('better-sqlite3');
 
 // Create/Connect DB
-const db = new Database('galnet-discord-bot.db', { verbose: console.log });
-db.prepare("CREATE TABLE IF NOT EXISTS servers('guild_id' varchar PRIMARY KEY, 'channel_id' varchar, 'active' bool, 'mention' varchar, 'language' varchar);").run();
+const db = new Database('galnet-discord-bot.db');
+db.prepare("CREATE TABLE IF NOT EXISTS servers('guild_id' varchar PRIMARY KEY, 'channel_id' varchar, 'active' bool, 'mention' varchar, 'language' varchar, 'last_sync' datetime);").run();
 
 // Variables
 var latest_sync = Date.now()
@@ -38,26 +38,30 @@ client.on("ready", () => {
 
 // Check for a new article every 7th and 37th minute
 let get_news = new cron.CronJob("7,37 * * * *", async () => {
+  console.log("[" + toDateTime(Date.now()) + "] Checking for new articles");
   let start_date_time = Date.now();
-  const new_article = await check_new_article();
-  if(new_article) {
-    // Split posting by language
-    var languages = db.prepare("SELECT DISTINCT language FROM servers;").all();
-    languages.forEach((language) => {
-      // Get the latest article in that language
-      get_latest_article(language.language)
-      .then((message) => {
-        // If successful, send out the article to all servers
+  var languages = db.prepare("SELECT DISTINCT language FROM servers;").all();
+  languages.forEach((language) => {
+    // Get the latest article in that language
+    get_latest_article(language.language)
+    .then((result) => {
+      // Check if we received any data, if not skip this run
+      if(result.message) {
         var servers = db.prepare(`SELECT * FROM servers WHERE language = '${language.language}';`).all();
         servers.forEach((server) => {
-          post(server.channel_id, message);
+          if(result.published_at >= server.last_sync) {
+            // This article is newer than the latest sync - post article
+            post(server.channel_id, result.message);
+          }
+          // Update the last_sync in the DB to the start time of the sync
+          db.prepare(`UPDATE servers SET last_sync = ? WHERE guild_id = ?;`).run(start_date_time, server.guild_id);
         });
-      })
-      .catch((error) => {
-        console.log("Error " + error)
-      });
+      }
+    })
+    .catch((error) => {
+      console.log("[" + toDateTime(Date.now()) + "] Error: " + error)
     });
-  }
+  });
 });
 
 function get_latest_article(language) {
@@ -72,67 +76,33 @@ function get_latest_article(language) {
         var article = JSON.parse(data);
         // Did we get any data
         if(article.data && article.data[0]) {
-          var title = "__**" + article.data[0].attributes.title + "**__\n";
-          var date = "_" + article.data[0].attributes.field_galnet_date + "_\n";
-          var link = `https://community.elitedangerous.com/${article.data[0].attributes.langcode}/galnet/uid/` + article.data[0].attributes.field_galnet_guid + "\n";
-          var body = ">>> " + article.data[0].attributes.body.value;
+          let title = "__**" + article.data[0].attributes.title + "**__\n";
+          let date = "_" + article.data[0].attributes.field_galnet_date + "_\n";
+          let link = `https://community.elitedangerous.com/${article.data[0].attributes.langcode}/galnet/uid/` + article.data[0].attributes.field_galnet_guid + "\n";
+          let body = ">>> " + article.data[0].attributes.body.value;
           body = body.replace(/(\*|_|`|~|\\)/g, '\\$1');
-          var message = title.concat(date, link, body);
-          resolve(message);
+          let message = title.concat(date, link, body);
+          let published_at = Date.parse(article.data[0].attributes.published_at);
+          resolve({published_at, message});
         } else {
           // we received no data, skip this time
           console.log("[" + toDateTime(Date.now()) + "] Received no data, skipping this run.");
           resolve(false);
         }
       });
-    }).on("error", (err) => {
-      console.log("Error: " + err.message);
+    }).on("error", (error) => {
+      console.log("[" + toDateTime(Date.now()) + "] Error: " + error.message);
       resolve(false);
     });
   });
 };
-
-function check_new_article() {
-  const start_date_time = Date.now()
-  return new Promise(resolve => {
-    https.get(`https://cms.zaonce.net/en-GB/jsonapi/node/galnet_article?&sort=-published_at&page[offset]=0&page[limit]=1`, (response) => {
-      let data = "";
-      response.setEncoding("utf8");
-      response.on("data", (chunk) => {
-        data += chunk;
-      });
-      response.on("end", () => {
-        var article = JSON.parse(data);
-        // console.log("[" + toDateTime(start_date_time) + "] Latest Sync: " + toDateTime(latest_sync));
-        // Did we get any data
-        if(article.data && article.data[0]) {
-          if(Date.parse(article.data[0].attributes.published_at) >= latest_sync) {
-            console.log("[" + toDateTime(start_date_time) + "] New article found! Published at: " + toDateTime(Date.parse(article.data[0].attributes.published_at)));
-            latest_sync = start_date_time;
-            resolve(true);
-          }
-          else {
-            console.log("[" + toDateTime(Date.now()) + "] Latest article published at: " + toDateTime(article.data[0].attributes.published_at));
-            latest_sync = start_date_time;
-            resolve(false);
-          }
-        } else {
-          // we received no data, skip this time
-          console.log("[" + toDateTime(Date.now()) + "] Received no data, skipping this run.")
-          resolve(false);
-        }
-      });
-    }).on("error", (err) => {
-      console.log("Error: " + err.message);
-    });
-  });
-}
 
 // Post to channel
 function post(channel_id, content) {
   let channel = client.channels.cache.get(channel_id);
   // If Channel exists, post
   if(channel) {
+    console.log("[" + toDateTime(Date.now()) + "] Posting article: {guild: \"" + channel.guild.name + "\", channel: \"" + channel.name + "\"}");
     const messageChunks = Util.splitMessage(content, {
       maxLength: 2000,
       prepend: '>>> ',
@@ -141,8 +111,6 @@ function post(channel_id, content) {
     messageChunks.forEach(async chunk => {
       await channel.send(chunk);
     });
-    //channel.send(content).catch(console.error);
-    console.log("[" + toDateTime(Date.now()) + "] Posting article to channel: " + channel_id)
   }
   else {
     console.log("[" + toDateTime(Date.now()) + "] Failed getting channel: " + channel_id);
@@ -165,8 +133,8 @@ client.on("channelUpdate", async function(old_channel, new_channel) {
     else if(new_channel.topic.toLowerCase().includes("it-it")) {language = "it-IT"} // Italian
     else {language = "en-GB"}
     client.channels.cache.get(new_channel.id).send(`Galnet News articles will be synced to this channel. Using the language code: ${language}.\nUpdate the channel topic with \`galnet-news off\` (or kick the bot) to stop.\nYou can delete this message and remove the channel topic now, if desired.`).catch(console.error);
-    console.log("[" + toDateTime(Date.now()) + "] Adding guild to servers list: " + new_channel.guild.id);
-    db.prepare(`INSERT OR REPLACE INTO servers (guild_id, channel_id, language) VALUES (?, ?, '${language}');`).run(new_channel.guild.id, new_channel.id);
+    console.log("[" + toDateTime(Date.now()) + "] Adding guild: {guild_id: \"" + new_channel.guild.id + "\", guild_name: \"" + new_channel.guild.name + "\", channel_name: \"" + new_channel.name + "\", language: \"" + language + "\"}");
+    db.prepare(`INSERT OR REPLACE INTO servers (guild_id, channel_id, active, language, last_sync) VALUES (?, ?, true, ?, ?);`).run(new_channel.guild.id, new_channel.id, language, Date.now());
   }
   if(new_channel.topic && new_channel.topic.includes("galnet-news off")) {
     client.channels.cache.get(new_channel.id).send("Galnet News article sync stopped for this channel.\nUpdate the channel topic with `galnet-news on` to resume article sync.\nYou can delete this message and remove the channel topic now, if desired.").catch(console.error);
