@@ -37,7 +37,7 @@ client.on("ready", () => {
 });
 
 // Check for a new article every 7th and 37th minute
-let get_news = new cron.CronJob("7,37 * * * *", async () => {
+let get_news = new cron.CronJob("7,22,37,52 * * * *", async () => {
   console.log("[" + toDateTime(Date.now()) + "] Checking for new articles");
   let start_date_time = Date.now();
   var languages = db.prepare("SELECT DISTINCT language FROM servers;").all();
@@ -119,6 +119,7 @@ function post(channel_id, content) {
 
 // Commands via channelUpdate
 client.on("channelUpdate", async function(old_channel, new_channel) {
+  // Create/Update channel sync
   if(new_channel.topic && new_channel.topic.includes("galnet-news on")) {
     var language = "en-GB"
     // Checking language
@@ -136,10 +137,29 @@ client.on("channelUpdate", async function(old_channel, new_channel) {
     console.log("[" + toDateTime(Date.now()) + "] Adding guild: {guild_id: \"" + new_channel.guild.id + "\", guild_name: \"" + new_channel.guild.name + "\", channel_name: \"" + new_channel.name + "\", language: \"" + language + "\"}");
     db.prepare(`INSERT OR REPLACE INTO servers (guild_id, channel_id, active, language, last_sync) VALUES (?, ?, true, ?, ?);`).run(new_channel.guild.id, new_channel.id, language, Date.now());
   }
+  // Command: Turn off sync
   if(new_channel.topic && new_channel.topic.includes("galnet-news off")) {
     client.channels.cache.get(new_channel.id).send("Galnet News article sync stopped for this channel.\nUpdate the channel topic with `galnet-news on` to resume article sync.\nYou can delete this message and remove the channel topic now, if desired.").catch(console.error);
     console.log("[" + toDateTime(Date.now()) + "] Removing guild from servers list: " + new_channel.guild.id);
     db.prepare("DELETE FROM servers WHERE guild_id = ?;").run(new_channel.guild.id);
+  }
+  // Command: Post article now
+  if(new_channel.topic && new_channel.topic.includes("galnet-news post-now")) {
+    // client.channels.cache.get(new_channel.id).send("Galnet News article sync stopped for this channel.\nUpdate the channel topic with `galnet-news on` to resume article sync.\nYou can delete this message and remove the channel topic now, if desired.").catch(console.error);
+    const row = db.prepare("SELECT * FROM servers WHERE guild_id = ?;").get(new_channel.guild.id);
+    console.log(row.guild_id, row.channel_id, row.language);
+    get_latest_article(row.language)
+    .then((result) => {
+      // Check if we received any data, if not skip this run
+      if(result.message) {
+        post(row.channel_id, result.message);
+        db.prepare(`UPDATE servers SET last_sync = ? WHERE guild_id = ?;`).run(Date.now(), row.guild_id);
+      }
+    })
+    .catch((error) => {
+      console.log("[" + toDateTime(Date.now()) + "] Error: " + error)
+    });
+
   }
 });
 

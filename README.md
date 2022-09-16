@@ -1,4 +1,5 @@
 # Galnet Discord Bot
+
 Discord bot to post Galnet News from Elite: Dangerous. This bot will check Galnet four times an hour for a new article and post to any subscribed Discord servers.
 
 ![Example Image of Bot](/how-to/example_image.jpg?raw=true)
@@ -40,6 +41,10 @@ Available language codes:
 * Russian: `ru-RU`
 
 I've noticed that some of these still show up as English, but that is how Frontier provides it.
+
+### Bot Commands
+
+* *Post Latest Article Now*: Add `galnet-news post-now` to your channel topic. This will post the current article now using the language configuration. This will continue to post if you update your channel, you will need to remove it if you don't want it to post more.
 
 ### Why are you using the commands in the channel topic?
 
